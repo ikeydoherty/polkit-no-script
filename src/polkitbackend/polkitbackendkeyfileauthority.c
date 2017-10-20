@@ -324,6 +324,9 @@ polkit_backend_keyfile_authority_constructed (GObject *object)
           = g_strdup (PACKAGE_DATA_DIR "/polkit-1/rules.d");
     }
 
+  setup_file_monitors (authority);
+  load_scripts (authority);
+
   G_OBJECT_CLASS (polkit_backend_keyfile_authority_parent_class)
       ->constructed (object);
 }
