@@ -450,7 +450,7 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
               if (g_str_equal (spec_group, POLICY_MATCH_WHEEL))
                 {
                   group = POLICY_WHEEL_GROUP;
-                  fprintf (stderr, "test group is wildcard from '%s' to '%s'",
+                  fprintf (stderr, "test group is wildcard from '%s' to '%s'\n",
                            spec_group, group);
                 }
               else
@@ -458,7 +458,7 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
                   group = spec_group;
                 }
 
-              fprintf (stderr, "testing '%s' vs users group '%s'", group,
+              fprintf (stderr, "testing '%s' vs users group '%s'\n", group,
                        test_group);
               if (g_str_equal (group, test_group))
                 {
