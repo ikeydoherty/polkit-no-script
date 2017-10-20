@@ -21,10 +21,6 @@ AM_CPPFLAGS =                                                   \
 
 noinst_LTLIBRARIES=libpolkit-backend-1.la
 
-initjs.h : init.js
-	$(PERL) $(srcdir)/toarray.pl $(srcdir)/init.js init_js > $@
-
-BUILT_SOURCES += initjs.h
 
 libpolkit_backend_1_la_SOURCES =                                   			\
 	$(BUILT_SOURCES)								\
@@ -33,7 +29,8 @@ libpolkit_backend_1_la_SOURCES =                                   			\
 	polkitbackendprivate.h								\
 	polkitbackendauthority.h		polkitbackendauthority.c		\
 	polkitbackendinteractiveauthority.h	polkitbackendinteractiveauthority.c	\
-	polkitbackendjsauthority.h		polkitbackendjsauthority.cpp		\
+	polkitbackendpolicyfile.h		polkitbackendpolicyfile.c		\
+	polkitbackendkeyfileauthority.h		polkitbackendkeyfileauthority.c		\
 	polkitbackendactionpool.h		polkitbackendactionpool.c		\
 	polkitbackendactionlookup.h		polkitbackendactionlookup.c		\
         $(NULL)
@@ -51,7 +48,6 @@ libpolkit_backend_1_la_CFLAGS =                                        	\
         -D_POLKIT_BACKEND_COMPILATION                                  	\
         $(GLIB_CFLAGS)							\
 	$(LIBSYSTEMD_CFLAGS)						\
-	$(LIBJS_CFLAGS)							\
         $(NULL)
 
 libpolkit_backend_1_la_CXXFLAGS = $(libpolkit_backend_1_la_CFLAGS)
@@ -61,11 +57,12 @@ libpolkit_backend_1_la_LIBADD =                               		\
 	$(LIBSYSTEMD_LIBS)						\
 	$(top_builddir)/src/polkit/libpolkit-gobject-1.la		\
 	$(EXPAT_LIBS)							\
-	$(LIBJS_LIBS)							\
         $(NULL)
 
 rulesdir = $(sysconfdir)/polkit-1/rules.d
-rules_DATA = 50-default.rules
+rules_DATA = \
+	50-default.keyrules \
+	50-default.rules
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -97,8 +94,6 @@ polkitd_LDADD = 				        		\
 CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST =								\
-	init.js								\
-	toarray.pl							\
 	$(rules_DATA)							\
 	$(NULL)
 
