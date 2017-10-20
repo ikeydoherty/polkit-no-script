@@ -358,3 +358,11 @@ policy_string_to_result (const gchar *inp)
     }
   return ret;
 }
+
+PolkitImplicitAuthorization
+policy_file_test (PolicyFile *file, const gchar *action_id,
+                  PolicyContext *context)
+{
+  /* For now we don't bother matching.. */
+  return POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
+}

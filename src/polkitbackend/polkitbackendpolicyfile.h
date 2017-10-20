@@ -81,6 +81,19 @@ typedef struct Policy
 } Policy;
 
 /**
+ * PolicyContext is a throw away type to organise a call to policy_file_test,
+ * and allows for future expansion.
+ */
+typedef struct PolicyContext
+{
+  PolkitSubject *subject;
+  PolkitIdentity *user_for_subject;
+  gboolean subject_is_local;
+  gboolean subject_is_active;
+  PolkitDetails *details;
+} PolicyContext;
+
+/**
  * PolicyFile is the "compiled" variant of a policykit plain-text rules
  * file, and is a light weight replacement for the traditional JavaScript
  * based rule files.
@@ -104,6 +117,15 @@ typedef struct PolicyFile
  * @err: If not NULL, any parsing error will be stored here
  */
 PolicyFile *policy_file_new_from_path (const char *path, GError **err);
+
+/**
+ * Check all policies until we hit a break, i.e a response that is not
+ * POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN If none of our own policies find a
+ * match, this call will traverse onto the ->next member.
+ */
+PolkitImplicitAuthorization policy_file_test (PolicyFile *file,
+                                              const gchar *action_id,
+                                              PolicyContext *context);
 
 /**
  * Free any resources associated with a PolicyFile

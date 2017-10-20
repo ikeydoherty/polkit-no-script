@@ -462,5 +462,28 @@ polkit_backend_keyfile_authority_check_authorization_sync (
     const gchar *action_id, PolkitDetails *details,
     PolkitImplicitAuthorization implicit)
 {
-  return POLKIT_IMPLICIT_AUTHORIZATION_NOT_AUTHORIZED;
+  PolkitImplicitAuthorization ret = implicit;
+  PolkitBackendKeyfileAuthority *authority
+      = POLKIT_BACKEND_KEYFILE_AUTHORITY (_authority);
+
+  /* Organise the context to pass to the policy file for testing */
+  PolicyContext context = {
+    .subject = subject,
+    .user_for_subject = user_for_subject,
+    .subject_is_local = subject_is_local,
+    .subject_is_active = subject_is_active,
+    .details = details,
+  };
+
+  /* Check if our policy files know about this */
+  ret = policy_file_test (authority->priv->policy, action_id, &context);
+
+  /* No rules answered, so we'll just return the implicit auth */
+  if (ret == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
+    {
+      return implicit;
+    }
+
+  /* Return auth per the policies */
+  return ret;
 }
