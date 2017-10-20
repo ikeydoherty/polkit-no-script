@@ -450,12 +450,16 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
               if (g_str_equal (spec_group, POLICY_MATCH_WHEEL))
                 {
                   group = POLICY_WHEEL_GROUP;
+                  fprintf (stderr, "test group is wildcard from '%s' to '%s'",
+                           spec_group, group);
                 }
               else
                 {
                   group = spec_group;
                 }
 
+              fprintf (stderr, "testing '%s' vs users group '%s'", group,
+                       test_group);
               if (g_str_equal (group, test_group))
                 {
                   local_test = conditions = TRUE;
