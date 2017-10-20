@@ -58,16 +58,14 @@ static gboolean policy_file_load_rules (GKeyFile *keyfile,
 static PolkitResponse policy_string_to_result (const gchar *inp);
 
 PolicyFile *
-policy_file_new_from_path (const char *path)
+policy_file_new_from_path (const char *path, GError **err)
 {
   g_autoptr (GKeyFile) keyf = NULL;
-  g_autoptr (GError) err = NULL;
   PolicyFile *ret = NULL;
 
   keyf = g_key_file_new ();
-  if (!g_key_file_load_from_file (keyf, path, G_KEY_FILE_NONE, &err))
+  if (!g_key_file_load_from_file (keyf, path, G_KEY_FILE_NONE, err))
     {
-      fprintf (stderr, "Failed to load file: %s\n", err->message);
       return NULL;
     }
 

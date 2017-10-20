@@ -114,8 +114,9 @@ typedef struct PolicyFile
 
 /**
  * Attempt to load a PolicyFile from the given path
+ * @err: If not NULL, any parsing error will be stored here
  */
-PolicyFile *policy_file_new_from_path (const char *path);
+PolicyFile *policy_file_new_from_path (const char *path, GError **err);
 
 /**
  * Free any resources associated with a PolicyFile

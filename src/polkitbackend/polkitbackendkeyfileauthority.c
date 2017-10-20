@@ -35,6 +35,7 @@
 #include <string.h>
 
 #include "polkitbackendkeyfileauthority.h"
+#include "polkitbackendpolicyfile.h"
 #include <polkit/polkit.h>
 
 #include <polkit/polkitprivate.h>
@@ -63,6 +64,8 @@ struct _PolkitBackendKeyfileAuthorityPrivate
   gchar **rules_dirs;
   GFileMonitor *
       *dir_monitors; /* NULL-terminated array of GFileMonitor instances */
+
+  PolicyFile *policy; /* Linked series of policies */
 };
 
 static void on_dir_monitor_changed (GFileMonitor *monitor, GFile *file,
@@ -148,6 +151,7 @@ load_scripts (PolkitBackendKeyfileAuthority *authority)
   guint num_scripts = 0;
   GError *error = NULL;
   guint n;
+  PolicyFile *last = NULL;
 
   files = NULL;
 
@@ -189,10 +193,27 @@ load_scripts (PolkitBackendKeyfileAuthority *authority)
   for (l = files; l != NULL; l = l->next)
     {
       const gchar *filename = (gchar *)l->data;
+      PolicyFile *file = NULL;
+      g_autoptr (GError) err = NULL;
 
-      polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
-                                    "Error compiling script %s", filename);
+      file = policy_file_new_from_path (filename, &err);
+      if (!file)
+        {
+          polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
+                                        "Error compiling rules %s: %s",
+                                        filename, err->message);
+          continue;
+        }
 
+      if (last)
+        {
+          last->next = file;
+          last = file;
+        }
+      else
+        {
+          last = authority->priv->policy = file;
+        }
       num_scripts++;
     }
 
@@ -205,6 +226,9 @@ load_scripts (PolkitBackendKeyfileAuthority *authority)
 static void
 reload_scripts (PolkitBackendKeyfileAuthority *authority)
 {
+  /* Remove old rules */
+  g_clear_pointer (&authority->priv->policy, policy_file_free);
+
   load_scripts (authority);
 
   /* Let applications know we have new rules... */
@@ -319,6 +343,9 @@ polkit_backend_keyfile_authority_finalize (GObject *object)
     }
   g_free (authority->priv->dir_monitors);
   g_strfreev (authority->priv->rules_dirs);
+
+  /* Remove old rules */
+  g_clear_pointer (&authority->priv->policy, policy_file_free);
 
   G_OBJECT_CLASS (polkit_backend_keyfile_authority_parent_class)
       ->finalize (object);
