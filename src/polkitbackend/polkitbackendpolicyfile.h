@@ -103,6 +103,10 @@ typedef struct PolicyContext
   gboolean subject_is_local;
   gboolean subject_is_active;
   PolkitDetails *details;
+  GPtrArray *groups;
+  gchar *username;
+  char *session_id;
+  char *seat_id;
 } PolicyContext;
 
 /**

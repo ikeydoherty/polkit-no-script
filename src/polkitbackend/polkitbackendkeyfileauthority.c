@@ -35,6 +35,7 @@
 #include <glib/gi18n-lib.h>
 #include <glib/gstdio.h>
 #include <locale.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "polkitbackendkeyfileauthority.h"
@@ -436,6 +437,110 @@ polkit_backend_keyfile_authority_class_init (
 /* ----------------------------------------------------------------------------------------------------
  */
 
+/**
+ * Ensure we prepare the context with extra details and make cookie bits work.
+ */
+static gboolean
+polkit_backend_keyfile_internal_prepare_context (
+    PolkitBackendKeyfileAuthority *authority, PolicyContext *context)
+{
+
+  pid_t pid;
+  uid_t uid;
+  struct passwd *passwd;
+
+  if (POLKIT_IS_UNIX_PROCESS (context->subject))
+    {
+      pid = polkit_unix_process_get_pid (
+          POLKIT_UNIX_PROCESS (context->subject));
+    }
+  else if (POLKIT_IS_SYSTEM_BUS_NAME (context->subject))
+    {
+      g_autoptr (GError) err = NULL;
+      PolkitSubject *process;
+      process = polkit_system_bus_name_get_process_sync (
+          POLKIT_SYSTEM_BUS_NAME (context->subject), NULL, &err);
+      if (process == NULL)
+        {
+          polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
+                                        "Failed to get process details: %s",
+                                        err->message);
+          return FALSE;
+        }
+      pid = polkit_unix_process_get_pid (POLKIT_UNIX_PROCESS (process));
+      g_object_unref (process);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+#ifdef HAVE_LIBSYSTEMD
+  if (sd_pid_get_session (pid, &context->session_id) == 0)
+    {
+      if (sd_session_get_seat (context->session_id, &context->seat_id) == 0)
+        {
+          /* do nothing */
+        }
+    }
+#endif /* HAVE_LIBSYSTEMD */
+
+  g_assert (POLKIT_IS_UNIX_USER (context->user_for_subject));
+  uid = polkit_unix_user_get_uid (
+      POLKIT_UNIX_USER (context->user_for_subject));
+
+  context->groups = g_ptr_array_new_with_free_func (g_free);
+
+  passwd = getpwuid (uid);
+  if (passwd == NULL)
+    {
+      context->username = g_strdup_printf ("%d", (gint)uid);
+      g_warning ("Error looking up info for uid %d: %m", (gint)uid);
+    }
+  else
+    {
+      gid_t gids[512];
+      int num_gids = 512;
+
+      context->username = g_strdup (passwd->pw_name);
+
+      if (getgrouplist (passwd->pw_name, passwd->pw_gid, gids, &num_gids) < 0)
+        {
+          g_warning ("Error looking up groups for uid %d: %m", (gint)uid);
+        }
+      else
+        {
+          gint n;
+          for (n = 0; n < num_gids; n++)
+            {
+              struct group *group;
+              group = getgrgid (gids[n]);
+              if (group == NULL)
+                {
+                  g_ptr_array_add (context->groups,
+                                   g_strdup_printf ("%d", (gint)gids[n]));
+                }
+              else
+                {
+                  g_ptr_array_add (context->groups, g_strdup (group->gr_name));
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Clear up any allocated types on the policycontext
+ */
+static void
+polkit_backend_keyfile_internal_clear_context (PolicyContext *context)
+{
+  g_clear_pointer (&context->seat_id, free);
+  g_clear_pointer (&context->session_id, free);
+  g_clear_pointer (&context->groups, g_ptr_array_unref);
+  g_clear_pointer (&context->username, g_free);
+}
+
 static GList *
 polkit_backend_keyfile_internal_build_admin (
     PolkitBackendKeyfileAuthority *authority, GList *ret, gchar **grouping,
@@ -484,6 +589,20 @@ polkit_backend_keyfile_authority_get_admin_auth_identities (
   PolkitBackendKeyfileAuthority *authority
       = POLKIT_BACKEND_KEYFILE_AUTHORITY (_authority);
 
+  /* Organise the context to pass to the policy file for testing */
+  PolicyContext context = {
+    .subject = subject,
+    .user_for_subject = user_for_subject,
+    .subject_is_local = subject_is_local,
+    .subject_is_active = subject_is_active,
+    .details = details,
+  };
+
+  if (!polkit_backend_keyfile_internal_prepare_context (authority, &context))
+    {
+      goto context_fail;
+    }
+
   for (PolicyFile *file = authority->priv->policy; file; file = file->next)
     {
       for (Policy *policy = file->rules.admin; policy; policy = policy->next)
@@ -513,6 +632,9 @@ polkit_backend_keyfile_authority_get_admin_auth_identities (
     }
 
   ret = g_list_reverse (ret);
+
+context_fail:
+  polkit_backend_keyfile_internal_clear_context (&context);
 
   if (ret == NULL)
     ret = g_list_prepend (ret, polkit_unix_user_new (0));
@@ -544,8 +666,16 @@ polkit_backend_keyfile_authority_check_authorization_sync (
     .details = details,
   };
 
+  if (!polkit_backend_keyfile_internal_prepare_context (authority, &context))
+    {
+      polkit_backend_keyfile_internal_clear_context (&context);
+      return POLKIT_IMPLICIT_AUTHORIZATION_NOT_AUTHORIZED;
+    }
+
   /* Check if our policy files know about this */
   ret = policy_file_test (authority->priv->policy, action_id, &context);
+
+  polkit_backend_keyfile_internal_clear_context (&context);
 
   /* No rules answered, so we'll just return the implicit auth */
   if (ret == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
