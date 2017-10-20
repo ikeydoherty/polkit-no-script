@@ -147,11 +147,11 @@ rules_file_name_cmp (const gchar *a, const gchar *b)
 
 /* authority->priv->cx must be within a request */
 static void
-load_scripts (PolkitBackendKeyfileAuthority *authority)
+load_rules (PolkitBackendKeyfileAuthority *authority)
 {
   GList *files = NULL;
   GList *l;
-  guint num_scripts = 0;
+  guint num_files = 0;
   GError *error = NULL;
   guint n;
   PolicyFile *last = NULL;
@@ -217,22 +217,21 @@ load_scripts (PolkitBackendKeyfileAuthority *authority)
         {
           last = authority->priv->policy = file;
         }
-      num_scripts++;
+      num_files++;
     }
 
-  polkit_backend_authority_log (
-      POLKIT_BACKEND_AUTHORITY (authority),
-      "Finished loading %d rules", num_scripts);
+  polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
+                                "Finished loading %d rules", num_files);
   g_list_free_full (files, g_free);
 }
 
 static void
-reload_scripts (PolkitBackendKeyfileAuthority *authority)
+reload_rules (PolkitBackendKeyfileAuthority *authority)
 {
   /* Remove old rules */
   g_clear_pointer (&authority->priv->policy, policy_file_free);
 
-  load_scripts (authority);
+  load_rules (authority);
 
   /* Let applications know we have new rules... */
   g_signal_emit_by_name (authority, "changed");
@@ -266,7 +265,7 @@ on_dir_monitor_changed (GFileMonitor *monitor, GFile *file, GFile *other_file,
         {
           polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
                                         "Reloading rules");
-          reload_scripts (authority);
+          reload_rules (authority);
         }
       g_free (name);
     }
@@ -325,7 +324,7 @@ polkit_backend_keyfile_authority_constructed (GObject *object)
     }
 
   setup_file_monitors (authority);
-  load_scripts (authority);
+  load_rules (authority);
 
   G_OBJECT_CLASS (polkit_backend_keyfile_authority_parent_class)
       ->constructed (object);
