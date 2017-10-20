@@ -41,18 +41,6 @@
  */
 #define POLICY_MATCH_ALL "*"
 
-/**
- * We'll swap "%wheel% for the wheel group configured at build time so that
- * other policies can easily reference them.
- */
-#define POLICY_MATCH_WHEEL "%wheel%"
-
-/**
- * Set at build time, redocumented here for clarity.
- * The system wheel group may be substituted using POLICY_MATCH_WHEEL
- */
-#define POLICY_WHEEL_GROUP WHEEL_GROUP
-
 static gboolean policy_file_load_rules (GKeyFile *keyfile,
                                         const gchar *section, Policy **target);
 static PolkitImplicitAuthorization policy_string_to_result (const gchar *inp);

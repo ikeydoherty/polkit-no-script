@@ -32,6 +32,18 @@
 #include <polkit/polkitprivate.h>
 
 /**
+ * Set at build time, redocumented here for clarity.
+ * The system wheel group may be substituted using POLICY_MATCH_WHEEL
+ */
+#define POLICY_WHEEL_GROUP WHEEL_GROUP
+
+/**
+ * We'll swap "%wheel% for the wheel group configured at build time so that
+ * other policies can easily reference them.
+ */
+#define POLICY_MATCH_WHEEL "%wheel%"
+
+/**
  * PolicyFileContraints are set per policy to ensure we'll only match
  * for explicitly set fields, as opposed to testing the default values
  */

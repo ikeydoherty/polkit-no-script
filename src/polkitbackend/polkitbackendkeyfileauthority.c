@@ -437,6 +437,43 @@ polkit_backend_keyfile_authority_class_init (
  */
 
 static GList *
+polkit_backend_keyfile_internal_build_admin (
+    PolkitBackendKeyfileAuthority *authority, GList *ret, gchar **grouping,
+    gsize n_items, gchar *id_prefix)
+{
+  g_autoptr (GError) err = NULL;
+
+  for (gsize i = 0; i < n_items; i++)
+    {
+      const gchar *match_item = g_strstrip (grouping[i]);
+      const gchar *identifier = NULL;
+
+      /* Allow %wheel% substitution here */
+      if (g_str_equal (match_item, POLICY_MATCH_WHEEL))
+        {
+          identifier = POLICY_WHEEL_GROUP;
+        }
+      else
+        {
+          identifier = match_item;
+        }
+
+      g_autofree gchar *nom = g_strdup_printf ("%s:%s", id_prefix, identifier);
+      PolkitIdentity *i = polkit_identity_from_string (nom, &err);
+      if (err)
+        {
+          polkit_backend_authority_log (POLKIT_BACKEND_AUTHORITY (authority),
+                                        "Identity `%s' is not valid, ignoring",
+                                        nom);
+          g_clear_error (&err);
+          continue;
+        }
+      ret = g_list_prepend (ret, i);
+    }
+  return ret;
+}
+
+static GList *
 polkit_backend_keyfile_authority_get_admin_auth_identities (
     PolkitBackendInteractiveAuthority *_authority, PolkitSubject *caller,
     PolkitSubject *subject, PolkitIdentity *user_for_subject,
@@ -444,6 +481,38 @@ polkit_backend_keyfile_authority_get_admin_auth_identities (
     const gchar *action_id, PolkitDetails *details)
 {
   GList *ret = NULL;
+  PolkitBackendKeyfileAuthority *authority
+      = POLKIT_BACKEND_KEYFILE_AUTHORITY (_authority);
+
+  for (PolicyFile *file = authority->priv->policy; file; file = file->next)
+    {
+      for (Policy *policy = file->rules.admin; policy; policy = policy->next)
+        {
+          if ((policy->constraints & PF_CONSTRAINT_UNIX_GROUPS)
+              == PF_CONSTRAINT_UNIX_GROUPS)
+            {
+              ret = polkit_backend_keyfile_internal_build_admin (
+                  authority, ret, policy->unix_groups, policy->n_unix_groups,
+                  "unix-group");
+            }
+          if ((policy->constraints & PF_CONSTRAINT_UNIX_NAMES)
+              == PF_CONSTRAINT_UNIX_NAMES)
+            {
+              ret = polkit_backend_keyfile_internal_build_admin (
+                  authority, ret, policy->unix_names, policy->n_unix_names,
+                  "unix-user");
+            }
+          if ((policy->constraints & PF_CONSTRAINT_NET_GROUPS)
+              == PF_CONSTRAINT_NET_GROUPS)
+            {
+              ret = polkit_backend_keyfile_internal_build_admin (
+                  authority, ret, policy->net_groups, policy->n_net_groups,
+                  "unix-netgroup");
+            }
+        }
+    }
+
+  ret = g_list_reverse (ret);
 
   if (ret == NULL)
     ret = g_list_prepend (ret, polkit_unix_user_new (0));
