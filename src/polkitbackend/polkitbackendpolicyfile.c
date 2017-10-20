@@ -48,9 +48,10 @@
 #define POLICY_MATCH_WHEEL "%wheel%"
 
 /**
- * TODO: Take from a configure time option
+ * Set at build time, redocumented here for clarity.
+ * The system wheel group may be substituted using POLICY_MATCH_WHEEL
  */
-#define POLICY_WHEEL_USER "wheel"
+#define POLICY_WHEEL_GROUP WHEEL_GROUP
 
 static gboolean policy_file_load_rules (GKeyFile *keyfile,
                                         const gchar *section, Policy **target);
