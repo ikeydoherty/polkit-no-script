@@ -21,10 +21,13 @@ AM_CPPFLAGS =                                                   \
 
 noinst_LTLIBRARIES=libpolkit-backend-1.la
 
+if POLKIT_BACKEND_JS
 initjs.h : init.js
 	$(PERL) $(srcdir)/toarray.pl $(srcdir)/init.js init_js > $@
 
 BUILT_SOURCES += initjs.h
+endif
+
 
 libpolkit_backend_1_la_SOURCES =                                   			\
 	$(BUILT_SOURCES)								\
@@ -33,10 +36,19 @@ libpolkit_backend_1_la_SOURCES =                                   			\
 	polkitbackendprivate.h								\
 	polkitbackendauthority.h		polkitbackendauthority.c		\
 	polkitbackendinteractiveauthority.h	polkitbackendinteractiveauthority.c	\
-	polkitbackendjsauthority.h		polkitbackendjsauthority.cpp		\
 	polkitbackendactionpool.h		polkitbackendactionpool.c		\
-	polkitbackendactionlookup.h		polkitbackendactionlookup.c		\
-        $(NULL)
+	polkitbackendactionlookup.h		polkitbackendactionlookup.c
+
+if POLKIT_BACKEND_KEYFILE
+libpolkit_backend_1_la_SOURCES += \
+	polkitbackendpolicyfile.h		polkitbackendpolicyfile.c		\
+	polkitbackendkeyfileauthority.h		polkitbackendkeyfileauthority.c \
+	$(NULL)
+else
+libpolkit_backend_1_la_SOURCES += \
+	polkitbackendjsauthority.h              polkitbackendjsauthority.cpp \
+	$(NULL)
+endif
 
 if HAVE_LIBSYSTEMD
 libpolkit_backend_1_la_SOURCES += \
@@ -50,22 +62,47 @@ libpolkit_backend_1_la_CFLAGS =                                        	\
         -D_POLKIT_COMPILATION                                  		\
         -D_POLKIT_BACKEND_COMPILATION                                  	\
         $(GLIB_CFLAGS)							\
-	$(LIBSYSTEMD_CFLAGS)						\
-	$(LIBJS_CFLAGS)							\
-        $(NULL)
-
-libpolkit_backend_1_la_CXXFLAGS = $(libpolkit_backend_1_la_CFLAGS)
+	$(LIBSYSTEMD_CFLAGS)
 
 libpolkit_backend_1_la_LIBADD =                               		\
         $(GLIB_LIBS)							\
 	$(LIBSYSTEMD_LIBS)						\
 	$(top_builddir)/src/polkit/libpolkit-gobject-1.la		\
-	$(EXPAT_LIBS)							\
-	$(LIBJS_LIBS)							\
+	$(EXPAT_LIBS)
+
+if POLKIT_BACKEND_JS
+libpolkit_backend_1_la_CFLAGS += \
+        $(LIBJS_CFLAGS) \
         $(NULL)
 
+libpolkit_backend_1_la_CXXFLAGS = $(libpolkit_backend_1_la_CFLAGS)
+
+libpolkit_backend_1_la_LIBADD += \
+        $(LIBJS_LIBS) \
+        $(NULL)
+else
+libpolkit_backend_1_la_CFLAGS += \
+        $(NULL)
+libpolkit_backend_1_la_LIBADD += \
+        $(NULL)
+endif
+
+
+backendrules = \
+	50-default.keyrules \
+	50-default.rules
+
 rulesdir = $(sysconfdir)/polkit-1/rules.d
+
+if POLKIT_BACKEND_JS
 rules_DATA = 50-default.rules
+else
+# For keyfile we need to keep the old rule file around to ensure polkitd process
+# can still see it during upgrade when it force reloads.
+rules_DATA = \
+	50-default.keyrules \
+	50-default.rules
+endif
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -97,9 +134,9 @@ polkitd_LDADD = 				        		\
 CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST =								\
-	init.js								\
-	toarray.pl							\
-	$(rules_DATA)							\
+       init.js                                                         \
+       toarray.pl                                                      \
+	$(backendrules)							\
 	$(NULL)
 
 dist-hook :

@@ -22,6 +22,8 @@
 #ifndef __POLKIT_BACKEND_TYPES_H
 #define __POLKIT_BACKEND_TYPES_H
 
+#include "config.h"
+
 #include <glib-object.h>
 
 struct _PolkitBackendActionLookup;
@@ -33,8 +35,13 @@ typedef struct _PolkitBackendAuthority PolkitBackendAuthority;
 struct _PolkitBackendInteractiveAuthority;
 typedef struct _PolkitBackendInteractiveAuthority PolkitBackendInteractiveAuthority;
 
+#ifdef POLKIT_BACKEND_JS
 struct _PolkitBackendJsAuthority;
 typedef struct _PolkitBackendJsAuthority PolkitBackendJsAuthority;
+#else
+struct _PolkitBackendKeyfileAuthority;
+typedef struct _PolkitBackendKeyfileAuthority PolkitBackendKeyfileAuthority;
+#endif
 
 #endif /* __POLKIT_BACKEND_TYPES_H */
 

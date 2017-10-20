@@ -30,7 +30,12 @@
 #include <polkit/polkitprivate.h>
 
 #include "polkitbackendauthority.h"
+
+#ifdef POLKIT_BACKEND_JS
 #include "polkitbackendjsauthority.h"
+#else
+#include "polkitbackendkeyfileauthority.h"
+#endif
 
 #include "polkitbackendprivate.h"
 
@@ -1433,7 +1438,11 @@ polkit_backend_authority_get (void)
            LOG_PID,
            LOG_AUTHPRIV); /* security/authorization messages (private) */
 
+#ifdef POLKIT_BACKEND_JS
   authority = POLKIT_BACKEND_AUTHORITY (g_object_new (POLKIT_BACKEND_TYPE_JS_AUTHORITY, NULL));
+#else
+  authority = POLKIT_BACKEND_AUTHORITY (g_object_new (POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY, NULL));
+#endif
 
   return authority;
 }
