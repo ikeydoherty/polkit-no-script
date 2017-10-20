@@ -29,6 +29,7 @@ libpolkit_backend_1_la_SOURCES =                                   			\
 	polkitbackendprivate.h								\
 	polkitbackendauthority.h		polkitbackendauthority.c		\
 	polkitbackendinteractiveauthority.h	polkitbackendinteractiveauthority.c	\
+	polkitbackendpolicyfile.h		polkitbackendpolicyfile.c		\
 	polkitbackendkeyfileauthority.h		polkitbackendkeyfileauthority.c		\
 	polkitbackendactionpool.h		polkitbackendactionpool.c		\
 	polkitbackendactionlookup.h		polkitbackendactionlookup.c		\
