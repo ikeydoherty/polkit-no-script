@@ -222,7 +222,7 @@ load_scripts (PolkitBackendKeyfileAuthority *authority)
 
   polkit_backend_authority_log (
       POLKIT_BACKEND_AUTHORITY (authority),
-      "Finished loading, compiling and executing %d rules", num_scripts);
+      "Finished loading %d rules", num_scripts);
   g_list_free_full (files, g_free);
 }
 
