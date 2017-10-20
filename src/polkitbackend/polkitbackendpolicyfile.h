@@ -29,6 +29,7 @@
 #define __POLKIT_BACKEND_POLICY_FILE_H
 
 #include <glib.h>
+#include <polkit/polkitprivate.h>
 
 /**
  * PolicyFileContraints are set per policy to ensure we'll only match
@@ -46,20 +47,6 @@ typedef enum {
   PF_CONSTRAINT_RESULT = 1 << 8,
   PF_CONSTRAINT_RESULT_INVERSE = 1 << 9,
 } PolicyFileConstraints;
-
-/**
- * Valid responses we expect to see returned by each rule. This ensures we
- * have ahead-of-time rule validation.
- */
-typedef enum {
-  PK_RESPONSE_NO = 0,
-  PK_RESPONSE_YES,
-  PK_RESPONSE_AUTH_SELF,
-  PK_RESPONSE_AUTH_SELF_KEEP,
-  PK_RESPONSE_AUTH_ADMIN,
-  PK_RESPONSE_AUTH_ADMIN_KEEP,
-  PK_RESPONSE_UNHANDLED,
-} PolkitResponse;
 
 /**
  * Each file may have multiple policies defined, which are chained
@@ -87,8 +74,8 @@ typedef struct Policy
   gboolean require_active;
   gboolean require_local;
 
-  PolkitResponse response;
-  PolkitResponse response_inverse;
+  PolkitImplicitAuthorization response;
+  PolkitImplicitAuthorization response_inverse;
 
   unsigned int constraints; /**<Match constraints per the keyfile */
 } Policy;

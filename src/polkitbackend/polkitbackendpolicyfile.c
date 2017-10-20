@@ -55,7 +55,7 @@
 
 static gboolean policy_file_load_rules (GKeyFile *keyfile,
                                         const gchar *section, Policy **target);
-static PolkitResponse policy_string_to_result (const gchar *inp);
+static PolkitImplicitAuthorization policy_string_to_result (const gchar *inp);
 
 PolicyFile *
 policy_file_new_from_path (const char *path, GError **err)
@@ -218,7 +218,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
           goto handle_err;
         }
       policy->response = policy_string_to_result (g_strstrip (result));
-      if (policy->response == PK_RESPONSE_UNHANDLED)
+      if (policy->response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
         {
           fprintf (stderr, "invalid 'Result': '%s'\n", result);
           goto handle_err;
@@ -236,7 +236,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
           goto handle_err;
         }
       policy->response_inverse = policy_string_to_result (g_strstrip (result));
-      if (policy->response == PK_RESPONSE_UNHANDLED)
+      if (policy->response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
         {
           fprintf (stderr, "invalid 'ResultInverse': '%s'\n", result);
           goto handle_err;
@@ -343,39 +343,18 @@ policy_file_load_rules (GKeyFile *keyfile, const gchar *section,
 }
 
 /**
- * Quickly turn the string into a usable internal response
+ * We wrap the implicit APIs to ensure we do a case insensitive, space-stripped
+ * comparison.
  */
-static PolkitResponse
+static PolkitImplicitAuthorization
 policy_string_to_result (const gchar *inp)
 {
   g_autofree gchar *comparison = g_ascii_strdown (inp, -1);
-
-  if (g_str_equal (comparison, "no"))
+  PolkitImplicitAuthorization ret = POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
+  if (!polkit_implicit_authorization_from_string (g_strstrip (comparison),
+                                                  &ret))
     {
-      return PK_RESPONSE_NO;
+      return POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
     }
-  else if (g_str_equal (comparison, "yes"))
-    {
-      return PK_RESPONSE_YES;
-    }
-  else if (g_str_equal (comparison, "auth_self"))
-    {
-      return PK_RESPONSE_AUTH_SELF;
-    }
-  else if (g_str_equal (comparison, "auth_self_keep"))
-    {
-      return PK_RESPONSE_AUTH_SELF_KEEP;
-    }
-  else if (g_str_equal (comparison, "auth_admin"))
-    {
-      return PK_RESPONSE_AUTH_ADMIN;
-    }
-  else if (g_str_equal (comparison, "auth_admin_keep"))
-    {
-      return PK_RESPONSE_AUTH_ADMIN_KEEP;
-    }
-  else
-    {
-      return PK_RESPONSE_UNHANDLED;
-    }
+  return ret;
 }
