@@ -527,6 +527,8 @@ polkit_backend_keyfile_internal_prepare_context (
             }
         }
     }
+
+  return TRUE;
 }
 
 /**
