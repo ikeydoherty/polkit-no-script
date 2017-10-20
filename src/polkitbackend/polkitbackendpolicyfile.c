@@ -133,7 +133,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
 
   if (!g_key_file_has_group (file, section_id))
     {
-      fprintf (stderr, "Missing rule: '%s'\n", section_id);
+      g_warning ("Missing rule: '%s'\n", section_id);
       return NULL;
     }
 
@@ -208,7 +208,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
       policy->response = policy_string_to_result (g_strstrip (result));
       if (policy->response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
         {
-          fprintf (stderr, "invalid 'Result': '%s'\n", result);
+          g_warning ("Invalid 'Result': '%s'\n", result);
           goto handle_err;
         }
       policy->constraints |= PF_CONSTRAINT_RESULT;
@@ -226,7 +226,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
       policy->response_inverse = policy_string_to_result (g_strstrip (result));
       if (policy->response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN)
         {
-          fprintf (stderr, "invalid 'ResultInverse': '%s'\n", result);
+          g_warning ("Invalid 'ResultInverse': '%s'\n", result);
           goto handle_err;
         }
       policy->constraints |= PF_CONSTRAINT_RESULT_INVERSE;
@@ -275,7 +275,7 @@ policy_load (GKeyFile *file, const gchar *section_id)
 handle_err:
 
   /* Print error.. */
-  fprintf (stderr, "policy_load(): error: %s\n", err->message);
+  g_warning ("policy_load(): error: %s\n", err->message);
 
   policy_free (policy);
   return NULL;
@@ -297,11 +297,9 @@ policy_file_load_rules (GKeyFile *keyfile, const gchar *section,
                                          &n_sections, &err);
   if (err)
     {
-      fprintf (stderr, "Failed to get sections: %s\n", err->message);
+      g_warning ("Failed to get sections: %s\n", err->message);
       return FALSE;
     }
-
-  fprintf (stderr, "Got %d sections\n", (int)n_sections);
 
   /* Attempt to load each rule now */
   for (gsize i = 0; i < n_sections; i++)
@@ -358,7 +356,6 @@ static PolkitImplicitAuthorization
 policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
 {
   PolkitImplicitAuthorization response = POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
-  fprintf (stderr, " -> trying : %s\n", policy->id);
   gboolean conditions = FALSE;
   gboolean id_matched = FALSE;
 
@@ -400,8 +397,6 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
       goto unmatched;
     }
 
-  fprintf (stderr, " -> Evaluating Candidate policy: %s\n", policy->id);
-
   id_matched = TRUE;
 
   /* Check for SubjectActive */
@@ -410,11 +405,9 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
     {
       if (context->subject_is_active != policy->require_active)
         {
-          printf (" -> failed SubjectActive\n");
           goto unmatched;
         }
       conditions = TRUE;
-      printf (" -> passed SubjectActive\n");
     }
 
   /* Check for SubjectLocal */
@@ -423,12 +416,10 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
     {
       if (context->subject_is_local != policy->require_local)
         {
-          printf (" -> failed SubjectLocal\n");
           conditions = FALSE;
           goto unmatched;
         }
       conditions = TRUE;
-      printf (" -> passed SubjectLocal\n");
     }
 
   /* Check for Unix Groups */
@@ -450,16 +441,12 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
               if (g_str_equal (spec_group, POLICY_MATCH_WHEEL))
                 {
                   group = POLICY_WHEEL_GROUP;
-                  fprintf (stderr, "test group is wildcard from '%s' to '%s'\n",
-                           spec_group, group);
                 }
               else
                 {
                   group = spec_group;
                 }
 
-              fprintf (stderr, "testing '%s' vs users group '%s'\n", group,
-                       test_group);
               if (g_str_equal (group, test_group))
                 {
                   local_test = conditions = TRUE;
@@ -470,11 +457,9 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
 
       if (!local_test)
         {
-          printf (" -> failed InUnixGroups\n");
           conditions = FALSE;
           goto unmatched;
         }
-      printf (" -> passed InUnixGroups\n");
     }
 
   /* Check for Unix usernames */
@@ -495,18 +480,15 @@ policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
         }
       if (!local_test)
         {
-          printf (" -> failed InUserNames\n");
           conditions = FALSE;
           goto unmatched;
         }
-      printf (" -> passed InUserNames\n");
     }
 
   /* We hit our conditions */
   if (conditions
       && (policy->constraints & PF_CONSTRAINT_RESULT) == PF_CONSTRAINT_RESULT)
     {
-      printf (" -> All conditions met\n");
       response = policy->response;
     }
 
@@ -542,7 +524,6 @@ policy_file_test (PolicyFile *file, const gchar *action_id,
                   PolicyContext *context)
 {
 
-  fprintf (stderr, "Testing: %s\n", action_id);
   PolkitImplicitAuthorization response = POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
 
   /* Traverse our policies and see if we find a match of some description */
