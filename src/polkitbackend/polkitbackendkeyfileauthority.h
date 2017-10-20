@@ -19,28 +19,41 @@
  * Author: David Zeuthen <davidz@redhat.com>
  */
 
-#if !defined (_POLKIT_BACKEND_COMPILATION) && !defined(_POLKIT_BACKEND_INSIDE_POLKIT_BACKEND_H)
-#error "Only <polkitbackend/polkitbackend.h> can be included directly, this file may disappear or change contents."
+#if !defined(_POLKIT_BACKEND_COMPILATION)                                     \
+    && !defined(_POLKIT_BACKEND_INSIDE_POLKIT_BACKEND_H)
+#error                                                                        \
+    "Only <polkitbackend/polkitbackend.h> can be included directly, this file may disappear or change contents."
 #endif
 
 #ifndef __POLKIT_BACKEND_KEYFILE_AUTHORITY_H
 #define __POLKIT_BACKEND_KEYFILE_AUTHORITY_H
 
 #include <glib-object.h>
-#include <polkitbackend/polkitbackendtypes.h>
 #include <polkitbackend/polkitbackendinteractiveauthority.h>
+#include <polkitbackend/polkitbackendtypes.h>
 
 G_BEGIN_DECLS
 
-#define POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY         (polkit_backend_keyfile_authority_get_type ())
-#define POLKIT_BACKEND_KEYFILE_AUTHORITY(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY, PolkitBackendKeyfileAuthority))
-#define POLKIT_BACKEND_KEYFILE_AUTHORITY_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST ((k), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY, PolkitBackendKeyfileAuthorityClass))
-#define POLKIT_BACKEND_KEYFILE_AUTHORITY_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY,PolkitBackendKeyfileAuthorityClass))
-#define POLKIT_BACKEND_IS_KEYFILE_AUTHORITY(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY))
-#define POLKIT_BACKEND_IS_KEYFILE_AUTHORITY_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY))
+#define POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY                                 \
+  (polkit_backend_keyfile_authority_get_type ())
+#define POLKIT_BACKEND_KEYFILE_AUTHORITY(o)                                   \
+  (G_TYPE_CHECK_INSTANCE_CAST ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY,    \
+                               PolkitBackendKeyfileAuthority))
+#define POLKIT_BACKEND_KEYFILE_AUTHORITY_CLASS(k)                             \
+  (G_TYPE_CHECK_CLASS_CAST ((k), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY,       \
+                            PolkitBackendKeyfileAuthorityClass))
+#define POLKIT_BACKEND_KEYFILE_AUTHORITY_GET_CLASS(o)                         \
+  (G_TYPE_INSTANCE_GET_CLASS ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY,     \
+                              PolkitBackendKeyfileAuthorityClass))
+#define POLKIT_BACKEND_IS_KEYFILE_AUTHORITY(o)                                \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((o), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY))
+#define POLKIT_BACKEND_IS_KEYFILE_AUTHORITY_CLASS(k)                          \
+  (G_TYPE_CHECK_CLASS_TYPE ((k), POLKIT_BACKEND_TYPE_KEYFILE_AUTHORITY))
 
-typedef struct _PolkitBackendKeyfileAuthorityClass    PolkitBackendKeyfileAuthorityClass;
-typedef struct _PolkitBackendKeyfileAuthorityPrivate  PolkitBackendKeyfileAuthorityPrivate;
+typedef struct _PolkitBackendKeyfileAuthorityClass
+    PolkitBackendKeyfileAuthorityClass;
+typedef struct _PolkitBackendKeyfileAuthorityPrivate
+    PolkitBackendKeyfileAuthorityPrivate;
 
 /**
  * PolkitBackendKeyfileAuthority:
@@ -66,10 +79,8 @@ struct _PolkitBackendKeyfileAuthorityClass
   PolkitBackendInteractiveAuthorityClass parent_class;
 };
 
-GType                   polkit_backend_keyfile_authority_get_type (void) G_GNUC_CONST;
+GType polkit_backend_keyfile_authority_get_type (void) G_GNUC_CONST;
 
 G_END_DECLS
 
 #endif /* __POLKIT_BACKEND_KEYFILE_AUTHORITY_H */
-
-
