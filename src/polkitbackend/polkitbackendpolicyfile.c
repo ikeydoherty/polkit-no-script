@@ -347,10 +347,211 @@ policy_string_to_result (const gchar *inp)
   return ret;
 }
 
+/**
+ * Test the given policy againt the given constraints, and find out if we have
+ * some specified action to take.
+ * Notice that the highest priority policies are lower in the list and reached
+ * first, so they can quite happily block later policies from evaluating
+ * completely.
+ */
+static PolkitImplicitAuthorization
+policy_test (Policy *policy, const gchar *action_id, PolicyContext *context)
+{
+  PolkitImplicitAuthorization response = POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
+  fprintf (stderr, " -> trying : %s\n", policy->id);
+  gboolean conditions = FALSE;
+  gboolean id_matched = FALSE;
+
+  /* Check actions to see if we've been matched */
+  if ((policy->constraints & PF_CONSTRAINT_ACTIONS) == PF_CONSTRAINT_ACTIONS)
+    {
+      for (gsize i = 0; i < policy->n_actions; i++)
+        {
+          const gchar *action = g_strstrip (policy->actions[i]);
+          /* Actions can match either directly or via special '*' character */
+          if (g_str_equal (action, action_id)
+              || g_str_equal (action, POLICY_MATCH_ALL))
+            {
+              conditions = TRUE;
+              break;
+            }
+        }
+    }
+
+  /* See if the string ID contains some substring patterns */
+  if ((policy->constraints & PF_CONSTRAINT_ACTION_CONTAINS)
+      == PF_CONSTRAINT_ACTION_CONTAINS)
+    {
+      for (gsize i = 0; i < policy->n_action_contains; i++)
+        {
+          const gchar *action = g_strstrip (policy->action_contains[i]);
+          if (strstr (action_id, action))
+            {
+              conditions = TRUE;
+              break;
+            }
+        }
+    }
+
+  /* At this point, policy test must've passed as we're explicitly testing
+   * action IDs */
+  if (!conditions)
+    {
+      goto unmatched;
+    }
+
+  fprintf (stderr, " -> Evaluating Candidate policy: %s\n", policy->id);
+
+  id_matched = TRUE;
+
+  /* Check for SubjectActive */
+  if ((policy->constraints & PF_CONSTRAINT_SUBJECT_ACTIVE)
+      == PF_CONSTRAINT_SUBJECT_ACTIVE)
+    {
+      if (context->subject_is_active != policy->require_active)
+        {
+          printf (" -> failed SubjectActive\n");
+          goto unmatched;
+        }
+      conditions = TRUE;
+      printf (" -> passed SubjectActive\n");
+    }
+
+  /* Check for SubjectLocal */
+  if ((policy->constraints & PF_CONSTRAINT_SUBJECT_LOCAL)
+      == PF_CONSTRAINT_SUBJECT_LOCAL)
+    {
+      if (context->subject_is_local != policy->require_local)
+        {
+          printf (" -> failed SubjectLocal\n");
+          conditions = FALSE;
+          goto unmatched;
+        }
+      conditions = TRUE;
+      printf (" -> passed SubjectLocal\n");
+    }
+
+  /* Check for Unix Groups */
+  if ((policy->constraints & PF_CONSTRAINT_UNIX_GROUPS)
+      == PF_CONSTRAINT_UNIX_GROUPS)
+    {
+      /* Must explicitly re-match here for unix groups now */
+      gboolean local_test = FALSE;
+
+      for (gsize i = 0; i < policy->n_unix_groups; i++)
+        {
+          for (gsize j = 0; j < context->groups->len; j++)
+            {
+              const gchar *group = NULL;
+              const gchar *spec_group = g_strstrip (policy->unix_groups[i]);
+              const gchar *test_group = g_ptr_array_index (context->groups, j);
+
+              /* Perform %wheel% substitution here */
+              if (g_str_equal (spec_group, POLICY_MATCH_WHEEL))
+                {
+                  group = POLICY_WHEEL_GROUP;
+                }
+              else
+                {
+                  group = spec_group;
+                }
+
+              if (g_str_equal (group, test_group))
+                {
+                  local_test = conditions = TRUE;
+                  break;
+                }
+            }
+        }
+
+      if (!local_test)
+        {
+          printf (" -> failed InUnixGroups\n");
+          conditions = FALSE;
+          goto unmatched;
+        }
+      printf (" -> passed InUnixGroups\n");
+    }
+
+  /* Check for Unix usernames */
+  if ((policy->constraints & PF_CONSTRAINT_UNIX_NAMES)
+      == PF_CONSTRAINT_UNIX_NAMES)
+    {
+      /* Must explicitly re-match here for unix names now */
+      gboolean local_test = FALSE;
+
+      for (gsize i = 0; i < policy->n_unix_names; i++)
+        {
+          const gchar *username = g_strstrip (policy->unix_names[i]);
+          if (g_str_equal (username, context->username))
+            {
+              local_test = conditions = TRUE;
+              break;
+            }
+        }
+      if (!local_test)
+        {
+          printf (" -> failed InUserNames\n");
+          conditions = FALSE;
+          goto unmatched;
+        }
+      printf (" -> passed InUserNames\n");
+    }
+
+  /* We hit our conditions */
+  if (conditions
+      && (policy->constraints & PF_CONSTRAINT_RESULT) == PF_CONSTRAINT_RESULT)
+    {
+      printf (" -> All conditions met\n");
+      response = policy->response;
+    }
+
+unmatched:
+  /* Must have an actual ID match */
+  if (!id_matched)
+    {
+      if (response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN && policy->next)
+        {
+          return policy_test (policy->next, action_id, context);
+        }
+      return response;
+    }
+
+  /* Conditions for the ID match were unmet and an inverse response is set */
+  if (!conditions
+      && (policy->constraints & PF_CONSTRAINT_RESULT_INVERSE)
+             == PF_CONSTRAINT_RESULT_INVERSE)
+    {
+      return policy->response_inverse;
+    }
+
+  /* Return or pass along */
+  if (response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN && policy->next)
+    {
+      return policy_test (policy->next, action_id, context);
+    }
+  return response;
+}
+
 PolkitImplicitAuthorization
 policy_file_test (PolicyFile *file, const gchar *action_id,
                   PolicyContext *context)
 {
-  /* For now we don't bother matching.. */
-  return POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
+
+  fprintf (stderr, "Testing: %s\n", action_id);
+  PolkitImplicitAuthorization response = POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN;
+
+  /* Traverse our policies and see if we find a match of some description */
+  if (file->rules.normal)
+    {
+      response = policy_test (file->rules.normal, action_id, context);
+    }
+
+  /* If we're still unhandled, pass it down the chain */
+  if (response == POLKIT_IMPLICIT_AUTHORIZATION_UNKNOWN && file->next)
+    {
+      return policy_file_test (file->next, action_id, context);
+    }
+
+  return response;
 }
