@@ -62,6 +62,7 @@ policy_file_new_from_path (const char *path, GError **err)
 {
   g_autoptr (GKeyFile) keyf = NULL;
   PolicyFile *ret = NULL;
+  gboolean has_rules = FALSE;
 
   keyf = g_key_file_new ();
   if (!g_key_file_load_from_file (keyf, path, G_KEY_FILE_NONE, err))
@@ -71,13 +72,29 @@ policy_file_new_from_path (const char *path, GError **err)
 
   ret = g_new0 (PolicyFile, 1);
 
-  if (!policy_file_load_rules (keyf, "Rules", &ret->rules.normal))
+  if (g_key_file_has_key (keyf, POLICY_SECTION, "Rules", NULL))
     {
-      policy_file_free (ret);
-      return NULL;
+      if (!policy_file_load_rules (keyf, "Rules", &ret->rules.normal))
+        {
+          policy_file_free (ret);
+          return NULL;
+        }
+      has_rules = TRUE;
     }
 
-  if (!policy_file_load_rules (keyf, "AdminRules", &ret->rules.admin))
+  if (g_key_file_has_key (keyf, POLICY_SECTION, "AdminRules", NULL))
+    {
+
+      if (!policy_file_load_rules (keyf, "AdminRules", &ret->rules.admin))
+        {
+          policy_file_free (ret);
+          return NULL;
+        }
+      has_rules = TRUE;
+    }
+
+  /* No sense in loading empty rules */
+  if (!has_rules)
     {
       policy_file_free (ret);
       return NULL;
