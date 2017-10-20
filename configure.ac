@@ -82,12 +82,6 @@ AC_DEFINE([GLIB_VERSION_MIN_REQUIRED], [GLIB_VERSION_2_30],
 AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [G_ENCODE_VERSION(2,34)],
         [Notify us when we'll need to transition away from g_type_init()])
 
-PKG_CHECK_MODULES(LIBJS, [mozjs-24])
-
-AC_SUBST(LIBJS_CFLAGS)
-AC_SUBST(LIBJS_CXXFLAGS)
-AC_SUBST(LIBJS_LIBS)
-
 EXPAT_LIB=""
 AC_ARG_WITH(expat, [  --with-expat=<dir>      Use expat from here],
                       [
