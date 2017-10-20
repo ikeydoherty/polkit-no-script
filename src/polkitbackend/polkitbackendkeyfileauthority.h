@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008-2012 Red Hat, Inc.
+ * Copyright (C) 2017 Ikey Doherty
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,7 +17,9 @@
  * Free Software Foundation, Inc., 59 Temple Place, Suite 330,
  * Boston, MA 02111-1307, USA.
  *
- * Author: David Zeuthen <davidz@redhat.com>
+ * Authors:
+ *    David Zeuthen <davidz@redhat.com>
+ *    Ikey Doherty <ikey@solus-project.com>
  */
 
 #if !defined(_POLKIT_BACKEND_COMPILATION)                                     \
